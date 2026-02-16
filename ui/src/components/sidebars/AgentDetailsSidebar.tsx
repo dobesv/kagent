@@ -123,7 +123,7 @@ export function AgentDetailsSidebar({ selectedAgentName, currentAgent, allTools 
             const baseToolIdentifier = getToolIdentifier(mcpTool);
             mcpTool.mcpServer?.toolNames.forEach((mcpToolName) => {
               const subToolIdentifier = `${baseToolIdentifier}::${mcpToolName}`;
-              
+
               // Find the tool in allTools by matching server ref and tool name
               const toolFromDB = allTools.find(server => {
                 const { name } = k8sRefUtils.fromRef(server.server_name);
@@ -143,7 +143,7 @@ export function AgentDetailsSidebar({ selectedAgentName, currentAgent, allTools 
           }
         });
       }
-      
+
       setToolDescriptions(descriptions);
     };
 
@@ -232,7 +232,7 @@ export function AgentDetailsSidebar({ selectedAgentName, currentAgent, allTools 
 
     // Check if agent is BYO type
   const isDeclarativeAgent = selectedTeam?.agent.spec.type === "Declarative";
-  
+
   return (
     <>
       <Sidebar side={"right"} collapsible="offcanvas">
