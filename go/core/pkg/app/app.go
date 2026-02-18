@@ -129,6 +129,9 @@ type Config struct {
 		UrlFile       string
 		VectorEnabled bool
 	}
+	UI struct {
+		BaseURL string
+	}
 }
 
 func (cfg *Config) SetFlags(commandLine *flag.FlagSet) {
@@ -160,6 +163,8 @@ func (cfg *Config) SetFlags(commandLine *flag.FlagSet) {
 	commandLine.StringVar(&cfg.Database.Url, "postgres-database-url", "postgres://postgres:kagent@db.kagent.svc.cluster.local:5432/crud", "The URL of the PostgreSQL database.")
 	commandLine.StringVar(&cfg.Database.UrlFile, "postgres-database-url-file", "", "Path to a file containing the PostgreSQL database URL. Takes precedence over --postgres-database-url.")
 	commandLine.BoolVar(&cfg.Database.VectorEnabled, "database-vector-enabled", true, "Enable vector database features (requires pgvector extension).")
+
+	commandLine.StringVar(&cfg.UI.BaseURL, "ui-base-url", "http://localhost:3000", "The base URL of the UI.")
 
 	commandLine.StringVar(&cfg.WatchNamespaces, "watch-namespaces", "", "The namespaces to watch for .")
 
@@ -479,6 +484,8 @@ func Start(getExtensionConfig GetExtensionConfig) {
 		mgr.GetClient(),
 		cfg.A2ABaseUrl+httpserver.APIPathA2A,
 		extensionCfg.Authenticator,
+		dbClient,
+		cfg.UI.BaseURL,
 	)
 	if err != nil {
 		setupLog.Error(err, "unable to create MCP handler")
