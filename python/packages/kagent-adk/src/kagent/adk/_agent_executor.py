@@ -44,6 +44,31 @@ from .converters.request_converter import convert_a2a_request_to_adk_run_args
 
 logger = logging.getLogger("kagent_adk." + __name__)
 
+# Maximum number of retry attempts after context window compaction
+_MAX_CONTEXT_RETRIES = 2
+
+# Default number of recent raw events to keep after emergency compaction
+_DEFAULT_EVENT_RETENTION_SIZE = 1
+
+
+def _is_context_window_error(error: Exception) -> bool:
+    """Check if an exception is a context window exceeded error.
+
+    Handles errors from various LLM providers (Anthropic, OpenAI, etc.)
+    routed through LiteLLM.
+    """
+    error_type = type(error).__name__
+    if "ContextWindowExceeded" in error_type:
+        return True
+
+    error_message = str(error).lower()
+    return (
+        "prompt is too long" in error_message
+        or "context window" in error_message
+        or "context_length_exceeded" in error_message
+        or "maximum context length" in error_message
+    )
+
 
 class A2aAgentExecutorConfig(BaseModel):
     """Configuration for the KAgent A2aAgentExecutor."""
@@ -252,6 +277,63 @@ class A2aAgentExecutor(UpstreamA2aAgentExecutor):
         except Exception as enqueue_error:
             logger.error("Failed to publish failure event: %s", enqueue_error, exc_info=True)
 
+    async def _try_compact_context(self, runner: Runner, run_args: dict[str, Any]) -> bool:
+        """Attempt emergency context compaction when a context window error occurs.
+
+        Only activates when the agent already has events_compaction_config set.
+        Temporarily overrides token_threshold to force immediate compaction,
+        then restores the original config.
+
+        Returns True if compaction succeeded and a retry is worthwhile.
+        """
+        from google.adk.apps.app import EventsCompactionConfig
+        from google.adk.apps.compaction import _run_compaction_for_token_threshold
+
+        try:
+            app = runner.app
+            original_config = app.events_compaction_config
+            if not original_config:
+                logger.info("Context window exceeded but no compaction configured for this agent, skipping retry")
+                return False
+
+            session = await runner.session_service.get_session(
+                app_name=runner.app_name,
+                user_id=run_args["user_id"],
+                session_id=run_args["session_id"],
+            )
+            if not session or not session.events:
+                logger.warning("Cannot compact context: session not found or has no events")
+                return False
+
+            retention_size = (
+                original_config.event_retention_size
+                if original_config.event_retention_size is not None
+                else _DEFAULT_EVENT_RETENTION_SIZE
+            )
+
+            app.events_compaction_config = EventsCompactionConfig(
+                compaction_interval=original_config.compaction_interval,
+                overlap_size=original_config.overlap_size,
+                token_threshold=1,
+                event_retention_size=retention_size,
+                summarizer=original_config.summarizer,
+            )
+
+            try:
+                compacted = await _run_compaction_for_token_threshold(app, session, runner.session_service)
+                if compacted:
+                    logger.info("Emergency context compaction completed successfully")
+                    return True
+                else:
+                    logger.warning("Emergency context compaction did not reduce context")
+                    return False
+            finally:
+                app.events_compaction_config = original_config
+
+        except Exception:
+            logger.error("Failed to compact context", exc_info=True)
+            return False
+
     async def _handle_request(
         self,
         context: RequestContext,
@@ -311,21 +393,40 @@ class A2aAgentExecutor(UpstreamA2aAgentExecutor):
         real_invocation_id: str | None = None
 
         task_result_aggregator = TaskResultAggregator()
-        async with Aclosing(runner.run_async(**run_args)) as agen:
-            async for adk_event in agen:
-                # Capture the real invocation_id from the first ADK event that has one
-                event_inv_id = getattr(adk_event, "invocation_id", None)
-                if event_inv_id and not real_invocation_id:
-                    real_invocation_id = event_inv_id
-                    run_metadata[get_kagent_metadata_key("invocation_id")] = real_invocation_id
-                for a2a_event in convert_event_to_a2a_events(
-                    adk_event, invocation_context, context.task_id, context.context_id
-                ):
-                    # Only aggregate non-partial events to avoid duplicates from streaming chunks
-                    # Partial events are sent to frontend for display but not accumulated
-                    if not adk_event.partial:
-                        task_result_aggregator.process_event(a2a_event)
-                    await event_queue.enqueue_event(a2a_event)
+
+        retried = False
+        while True:
+            try:
+                if retried:
+                    task_result_aggregator = TaskResultAggregator()
+                    real_invocation_id = None
+
+                async with Aclosing(runner.run_async(**run_args)) as agen:
+                    async for adk_event in agen:
+                        # Capture the real invocation_id from the first ADK event that has one
+                        event_inv_id = getattr(adk_event, "invocation_id", None)
+                        if event_inv_id and not real_invocation_id:
+                            real_invocation_id = event_inv_id
+                            run_metadata[get_kagent_metadata_key("invocation_id")] = real_invocation_id
+                        for a2a_event in convert_event_to_a2a_events(
+                            adk_event, invocation_context, context.task_id, context.context_id
+                        ):
+                            # Only aggregate non-partial events to avoid duplicates from streaming chunks
+                            # Partial events are sent to frontend for display but not accumulated
+                            if not adk_event.partial:
+                                task_result_aggregator.process_event(a2a_event)
+                            await event_queue.enqueue_event(a2a_event)
+
+                break
+
+            except Exception as e:
+                if not retried and _is_context_window_error(e):
+                    logger.warning("Context window exceeded. Compacting session events and retrying...")
+                    compacted = await self._try_compact_context(runner, run_args)
+                    if compacted:
+                        retried = True
+                        continue
+                raise
 
         # publish the task result event - this is final
         if (
