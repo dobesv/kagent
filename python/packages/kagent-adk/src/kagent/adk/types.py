@@ -559,9 +559,17 @@ def build_adk_context_configs(
 
         if comp.summarizer_model is not None:
             from google.adk.apps.llm_event_summarizer import LlmEventSummarizer
+            from google.adk.models.base_llm import BaseLlm
+            from google.adk.models.registry import LLMRegistry
+
+            llm = _create_llm_from_model_config(comp.summarizer_model)
+            if not isinstance(llm, BaseLlm):
+                # _create_llm_from_model_config returns a bare string for gemini models,
+                # but LlmEventSummarizer requires a BaseLlm instance.
+                llm = LLMRegistry.new_llm(llm)
 
             summarizer = LlmEventSummarizer(
-                llm=_create_llm_from_model_config(comp.summarizer_model),
+                llm=llm,
                 prompt_template=comp.prompt_template,
             )
 

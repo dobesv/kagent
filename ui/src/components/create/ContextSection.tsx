@@ -133,7 +133,7 @@ export function ContextSection({
                 disabled={isSubmitting}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Trigger compaction when prompt tokens exceed this threshold.
+                Trigger compaction when prompt tokens exceed this threshold.  Note: requires Event Retention Size to be set as well.
               </p>
             </div>
             <div>

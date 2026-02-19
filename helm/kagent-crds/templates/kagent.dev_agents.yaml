@@ -6248,7 +6248,7 @@ spec:
                             type: integer
                           eventRetentionSize:
                             description: EventRetentionSize is the number of most
-                              recent events to always retain.
+                              recent events to always retain (i.e. exclude from compaction).
                             type: integer
                           overlapSize:
                             default: 2
@@ -6278,8 +6278,8 @@ spec:
                             type: object
                           tokenThreshold:
                             description: |-
-                              Post-invocation token threshold trigger. If set, ADK will attempt a post-invocation compaction when the most recently
-                              observed prompt token count meets or exceeds this threshold.
+                              TokenThreshold is a post-invocation token threshold trigger. When set together with EventRetentionSize,
+                              ADK will attempt a compaction after each invocation whose prompt token count meets or exceeds this threshold.
                             type: integer
                         type: object
                     type: object

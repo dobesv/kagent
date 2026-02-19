@@ -224,11 +224,11 @@ type ContextCompressionConfig struct {
 	// If not specified, compacted events are dropped from the context without summarization.
 	// +optional
 	Summarizer *ContextSummarizerConfig `json:"summarizer,omitempty"`
-	// Post-invocation token threshold trigger. If set, ADK will attempt a post-invocation compaction when the most recently
-	// observed prompt token count meets or exceeds this threshold.
+	// TokenThreshold is a post-invocation token threshold trigger. When set together with EventRetentionSize,
+	// ADK will attempt a compaction after each invocation whose prompt token count meets or exceeds this threshold.
 	// +optional
 	TokenThreshold *int `json:"tokenThreshold,omitempty"`
-	// EventRetentionSize is the number of most recent events to always retain.
+	// EventRetentionSize is the number of most recent events to always retain (i.e. exclude from compaction).
 	// +optional
 	EventRetentionSize *int `json:"eventRetentionSize,omitempty"`
 }
