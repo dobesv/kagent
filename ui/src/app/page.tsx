@@ -1,5 +1,5 @@
-import AgentList from "@/components/AgentList";
+import HomeContent from "@/components/HomeContent";
 
-export default async function AgentListPage() {
-  return <AgentList />;
+export default function AgentListPage() {
+  return <HomeContent />;
 }

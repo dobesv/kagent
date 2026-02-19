@@ -23,9 +23,10 @@ interface ChatItemProps {
   sessionName?: string;
   onDownload?: (sessionId: string) => Promise<void>;
   createdAt?: string;
+  showAgentName?: boolean;
 }
 
-const ChatItem = ({ sessionId, agentName, agentNamespace, onDelete, sessionName, onDownload, createdAt }: ChatItemProps) => {
+const ChatItem = ({ sessionId, agentName, agentNamespace, onDelete, sessionName, onDownload, createdAt, showAgentName }: ChatItemProps) => {
   const title = sessionName || "Untitled";
   
   // Format timestamp based on how recent it is
@@ -52,13 +53,18 @@ const ChatItem = ({ sessionId, agentName, agentNamespace, onDelete, sessionName,
       <SidebarMenu>
         <SidebarMenuItem key={sessionId}>
           <SidebarMenuButton asChild className="overflow-hidden relative group/chatitem">
-            <Link href={`/agents/${agentNamespace}/${agentName}/chat/${sessionId}`} className="flex items-center w-full">
-              <span className="text-sm whitespace-nowrap" title={title}>{title}</span>
-              <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-muted-foreground whitespace-nowrap pl-6"
-                style={{
-                  background: 'linear-gradient(to right, transparent, hsl(var(--sidebar-background)) 30%)',
-                }}
-              >{formatTime(createdAt)}</span>
+            <Link href={`/agents/${agentNamespace}/${agentName}/chat/${sessionId}`} className="flex flex-col w-full">
+              <div className="flex items-center w-full relative">
+                <span className="text-sm whitespace-nowrap" title={title}>{title}</span>
+                <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-muted-foreground whitespace-nowrap pl-6"
+                  style={{
+                    background: 'linear-gradient(to right, transparent, hsl(var(--sidebar-background)) 30%)',
+                  }}
+                >{formatTime(createdAt)}</span>
+              </div>
+              {showAgentName && agentName && (
+                <span className="text-xs text-muted-foreground truncate">{agentName}</span>
+              )}
             </Link>
           </SidebarMenuButton>
           <DropdownMenu modal={false}>

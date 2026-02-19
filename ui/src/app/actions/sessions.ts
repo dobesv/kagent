@@ -91,6 +91,19 @@ export async function getSessionTasks(sessionId: string): Promise<BaseResponse<T
 }
 
 /**
+ * Gets all sessions across all agents
+ * @returns A promise with all sessions
+ */
+export async function getAllSessions(): Promise<BaseResponse<Session[]>> {
+  try {
+    const data = await fetchApi<BaseResponse<Session[]>>(`/sessions`);
+    return { message: "Sessions fetched successfully", data: data.data || [] };
+  } catch (error) {
+    return createErrorResponse<Session[]>(error, "Error getting all sessions");
+  }
+}
+
+/**
  * Check if a session exists
  * @param sessionId The session ID to check
  * @returns A promise with boolean indicating if session exists
