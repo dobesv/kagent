@@ -234,7 +234,7 @@ export default function ChatInterface({ selectedAgentName, selectedNamespace, se
 
           const newSessionResponse = await createSession({
             agent_ref: `${selectedNamespace}/${selectedAgentName}`,
-            name: userMessageText.slice(0, 20) + (userMessageText.length > 20 ? "..." : ""),
+            name: userMessageText.slice(0, 100),
           });
 
           if (newSessionResponse.error || !newSessionResponse.data) {
