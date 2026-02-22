@@ -3,10 +3,11 @@ import { FunctionCall, TokenStats } from "@/types";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { FunctionSquare, CheckCircle, Clock, Code, ChevronUp, ChevronDown, Loader2, Text, Check, Copy, AlertCircle, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import TokenStatsTooltip from "@/components/chat/TokenStatsTooltip";
 import { convertToUserFriendlyName } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
+import { SmartContent, parseContentString } from "@/components/chat/SmartContent";
 
 export type ToolCallStatus = "requested" | "executing" | "completed" | "pending_approval" | "approved" | "rejected";
 
@@ -27,6 +28,67 @@ interface ToolDisplayProps {
   tokenStats?: TokenStats;
 }
 
+function CollapsibleSection({
+  icon: Icon,
+  expanded,
+  onToggle,
+  previewContent,
+  expandedContent,
+  errorStyle,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  expanded: boolean;
+  onToggle: () => void;
+  previewContent: React.ReactNode;
+  expandedContent: React.ReactNode;
+  errorStyle?: boolean;
+}) {
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        className="block w-full text-left cursor-pointer rounded-md hover:bg-muted/40 transition-colors"
+      >
+        <div className="flex items-start gap-1.5">
+          <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <div className="relative max-h-20 overflow-hidden">
+              {previewContent}
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-center pt-0.5 text-muted-foreground">
+          <ChevronDown className="w-3.5 h-3.5" />
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-md">
+      <div className="flex items-start gap-1.5">
+        <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+        <div className="flex-1 min-w-0">
+          <div className={`relative rounded-md ${errorStyle ? "bg-red-50 dark:bg-red-950/10" : ""}`}>
+            <ScrollArea className="max-h-96 overflow-y-auto p-2 w-full rounded-md bg-muted/50">
+              {expandedContent}
+            </ScrollArea>
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex justify-center w-full pt-0.5 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+      >
+        <ChevronUp className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────
 const ToolDisplay = ({ call, result, status = "requested", isError = false, isDecided = false, subagentName, onApprove, onReject, tokenStats }: ToolDisplayProps) => {
   const [areArgumentsExpanded, setAreArgumentsExpanded] = useState(status === "pending_approval");
   const [areResultsExpanded, setAreResultsExpanded] = useState(false);
@@ -36,16 +98,7 @@ const ToolDisplay = ({ call, result, status = "requested", isError = false, isDe
   const [rejectionReason, setRejectionReason] = useState("");
 
   const hasResult = result !== undefined;
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(result?.content || "");
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy text:", err);
-    }
-  };
+  const parsedResult = hasResult ? parseContentString(result.content) : null;
 
   const handleApprove = async () => {
     if (!onApprove) {
@@ -143,15 +196,20 @@ const ToolDisplay = ({ call, result, status = "requested", isError = false, isDe
     }
   };
 
-  const borderClass = status === "pending_approval"
-    ? 'border-amber-300 dark:border-amber-700'
-    : status === "rejected"
-      ? 'border-red-300 dark:border-red-700'
-      : status === "approved"
-        ? 'border-green-300 dark:border-green-700'
-        : isError
-          ? 'border-red-300'
-          : '';
+    const borderClass = status === "pending_approval"
+        ? 'border-amber-300 dark:border-amber-700'
+        : status === "rejected"
+            ? 'border-red-300 dark:border-red-700'
+            : status === "approved"
+                ? 'border-green-300 dark:border-green-700'
+                : isError
+                    ? 'border-red-300'
+                    : '';
+
+  const argsContent = <SmartContent data={call.args} />;
+  const resultContent = parsedResult !== null
+    ? <SmartContent data={parsedResult} className={isError ? "text-red-600 dark:text-red-400" : ""} />
+    : null;
 
   return (
     <Card className={`w-full mx-auto my-1 min-w-full ${borderClass}`}>
@@ -173,112 +231,93 @@ const ToolDisplay = ({ call, result, status = "requested", isError = false, isDe
           {getStatusDisplay()}
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-2 mt-4">
-          <Button variant="ghost" size="sm" className="p-0 h-auto justify-start" onClick={() => setAreArgumentsExpanded(!areArgumentsExpanded)}>
-            <Code className="w-4 h-4 mr-2" />
-            <span className="mr-2">Arguments</span>
-            {areArgumentsExpanded ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
-          </Button>
-          {areArgumentsExpanded && (
-            <div className="relative">
-              <ScrollArea className="max-h-96 overflow-y-auto p-4 w-full mt-2 bg-muted/50">
-                <pre className="text-sm whitespace-pre-wrap break-words">
-                  {JSON.stringify(call.args, null, 2)}
-                </pre>
-              </ScrollArea>
+      <CardContent className="space-y-1 pt-0">
+          <div className="space-y-2 mt-4">
+            <CollapsibleSection
+              icon={Code}
+              expanded={areArgumentsExpanded}
+              onToggle={() => setAreArgumentsExpanded(!areArgumentsExpanded)}
+              previewContent={argsContent}
+              expandedContent={argsContent}
+            />
+          </div>
+
+
+          {/* Approval buttons — hidden when decided (batch) or submitting */}
+          {status === "pending_approval" && !isSubmitting && !isDecided && !showRejectForm && (
+              <div className="mt-4 space-y-2">
+                  <div className="flex gap-2">
+                      <Button
+                          size="sm"
+                          variant="default"
+                          onClick={handleApprove}
+                      >
+                          Approve
+                      </Button>
+                      <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={handleRejectClick}
+                      >
+                          Reject
+                      </Button>
+                  </div>
+              </div>
+          )}
+
+          {/* Rejection reason form — shown after clicking Reject */}
+          {status === "pending_approval" && !isSubmitting && !isDecided && showRejectForm && (
+              <div className="mt-4 space-y-2">
+                  <Textarea
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      placeholder="Why are you rejecting this? (optional)"
+                      className="min-h-[60px] resize-none text-sm"
+                      autoFocus
+                  />
+                  <div className="flex gap-2">
+                      <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={handleRejectConfirm}
+                      >
+                          Reject
+                      </Button>
+                      <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleRejectCancel}
+                      >
+                          Cancel
+                      </Button>
+                  </div>
+              </div>
+          )}
+
+          {status === "pending_approval" && (isSubmitting || isDecided) && (
+            <div className="flex items-center gap-2 py-2 mt-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm text-muted-foreground">
+                {isDecided ? "Waiting..." : "Submitting decision..."}
+              </span>
             </div>
           )}
-        </div>
-
-        {/* Approval buttons — hidden when decided (batch) or submitting */}
-        {status === "pending_approval" && !isSubmitting && !isDecided && !showRejectForm && (
-          <div className="mt-4 space-y-2">
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="default"
-                onClick={handleApprove}
-              >
-                Approve
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={handleRejectClick}
-              >
-                Reject
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Rejection reason form — shown after clicking Reject */}
-        {status === "pending_approval" && !isSubmitting && !isDecided && showRejectForm && (
-          <div className="mt-4 space-y-2">
-            <Textarea
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="Why are you rejecting this? (optional)"
-              className="min-h-[60px] resize-none text-sm"
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={handleRejectConfirm}
-              >
-                Reject
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleRejectCancel}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {status === "pending_approval" && (isSubmitting || isDecided) && (
-          <div className="flex items-center gap-2 py-2 mt-4">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-muted-foreground">
-              {isDecided ? "Waiting..." : "Submitting decision..."}
-            </span>
-          </div>
-        )}
-
         <div className="mt-4 w-full">
           {status === "executing" && !hasResult && (
-            <div className="flex items-center gap-2 py-2">
+            <div className="flex items-center gap-2 py-1">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Executing...</span>
             </div>
           )}
-          {hasResult && (
-            <>
-              <Button variant="ghost" size="sm" className="p-0 h-auto justify-start" onClick={() => setAreResultsExpanded(!areResultsExpanded)}>
-                <Text className="w-4 h-4 mr-2" />
-                <span className="mr-2">{isError ? "Error" : "Results"}</span>
-                {areResultsExpanded ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
-              </Button>
-              {areResultsExpanded && (
-                <div className="relative">
-                  <ScrollArea className={`max-h-96 overflow-y-auto p-4 w-full mt-2 ${isError ? 'bg-red-50 dark:bg-red-950/10' : ''}`}>
-                    <pre className={`text-sm whitespace-pre-wrap break-words ${isError ? 'text-red-600 dark:text-red-400' : ''}`}>
-                      {result.content}
-                    </pre>
-                  </ScrollArea>
-
-                  <Button variant="ghost" size="sm" className="absolute top-2 right-2 p-2" onClick={handleCopy}>
-                    {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </div>
-              )}
-            </>
+          {hasResult && resultContent && (
+            <CollapsibleSection
+              icon={Text}
+              expanded={areResultsExpanded}
+              onToggle={() => setAreResultsExpanded(!areResultsExpanded)}
+              previewContent={resultContent}
+              expandedContent={resultContent}
+              errorStyle={isError}
+            />
           )}
         </div>
       </CardContent>

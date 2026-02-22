@@ -2,8 +2,10 @@ import { createContext, useContext, useMemo, useState, useEffect } from "react";
 import { FunctionCall, TokenStats } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { convertToUserFriendlyName } from "@/lib/utils";
-import { ChevronDown, ChevronUp, MessageSquare, Loader2, AlertCircle, CheckCircle, Activity } from "lucide-react";
+import { ChevronUp, ChevronDown, MessageSquare, Loader2, AlertCircle, CheckCircle, Activity } from "lucide-react";
+import { ScrollArea } from "@radix-ui/react-scroll-area";
 import KagentLogo from "../kagent-logo";
+import { SmartContent, parseContentString } from "./SmartContent";
 import TokenStatsTooltip from "@/components/chat/TokenStatsTooltip";
 import { getSubagentSessionWithEvents } from "@/app/actions/sessions";
 import { Message, Task } from "@a2a-js/sdk";
@@ -124,6 +126,67 @@ function SubagentActivityPanel({ sessionId, isComplete }: SubagentActivityPanelP
   );
 }
 
+
+function CollapsibleSection({
+                                icon: Icon,
+                                expanded,
+                                onToggle,
+                                previewContent,
+                                expandedContent,
+                                errorStyle,
+                            }: {
+    icon: React.ComponentType<{ className?: string }>;
+    expanded: boolean;
+    onToggle: () => void;
+    previewContent: React.ReactNode;
+    expandedContent: React.ReactNode;
+    errorStyle?: boolean;
+}) {
+    if (!expanded) {
+        return (
+            <button
+                type="button"
+                onClick={onToggle}
+                className="block w-full text-left cursor-pointer rounded-md hover:bg-muted/40 transition-colors"
+            >
+                <div className="flex items-start gap-1.5">
+                    <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                        <div className="relative max-h-20 overflow-hidden">
+                            {previewContent}
+                        </div>
+                    </div>
+                </div>
+                <div className="flex justify-center pt-0.5 text-muted-foreground">
+                    <ChevronDown className="w-3.5 h-3.5" />
+                </div>
+            </button>
+        );
+    }
+
+    return (
+        <div className="rounded-md">
+            <div className="flex items-start gap-1.5">
+                <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                    <div className={`relative rounded-md ${errorStyle ? "bg-red-50 dark:bg-red-950/10" : ""}`}>
+                        <ScrollArea className="max-h-96 overflow-y-auto p-2 w-full rounded-md bg-muted/50">
+                            {expandedContent}
+                        </ScrollArea>
+                    </div>
+                </div>
+            </div>
+            <button
+                type="button"
+                onClick={onToggle}
+                className="flex justify-center w-full pt-0.5 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+            >
+                <ChevronUp className="w-3.5 h-3.5" />
+            </button>
+        </div>
+    );
+}
+
 const AgentCallDisplay = ({ call, result, status = "requested", isError = false, tokenStats, subagentSessionId }: AgentCallDisplayProps) => {
   const [areInputsExpanded, setAreInputsExpanded] = useState(false);
   const [areResultsExpanded, setAreResultsExpanded] = useState(false);
@@ -178,6 +241,12 @@ const AgentCallDisplay = ({ call, result, status = "requested", isError = false,
     }
   };
 
+  const parsedResult = hasResult && result?.content ? parseContentString(result.content) : null;
+  const argsContent = <SmartContent data={call.args} />;
+  const resultContent = parsedResult !== null
+    ? <SmartContent data={parsedResult} className={isError ? "text-red-600 dark:text-red-400" : ""} />
+    : null;
+
   return (
     <Card className={`w-full mx-auto my-1 min-w-full ${isError ? 'border-red-300' : ''}`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -193,44 +262,30 @@ const AgentCallDisplay = ({ call, result, status = "requested", isError = false,
           {getStatusDisplay()}
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-2 mt-2">
-          <button className="text-xs flex items-center gap-2" onClick={() => setAreInputsExpanded(!areInputsExpanded)}>
-            <MessageSquare className="w-4 h-4" />
-            <span>Input</span>
-            {areInputsExpanded ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
-          </button>
-          {areInputsExpanded && (
-            <div className="mt-2 bg-muted/50 p-3 rounded">
-              <pre className="text-sm whitespace-pre-wrap break-words">{JSON.stringify(call.args, null, 2)}</pre>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-4 w-full">
-          {status === "executing" && !hasResult && (
-            <div className="flex items-center gap-2 py-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">{agentDisplay} is responding...</span>
-            </div>
-          )}
-          {hasResult && result?.content && (
-            <div className="space-y-2">
-              <button className="text-xs flex items-center gap-2" onClick={() => setAreResultsExpanded(!areResultsExpanded)}>
-                <MessageSquare className="w-4 h-4" />
-                <span>Output</span>
-                {areResultsExpanded ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
-              </button>
-              {areResultsExpanded && (
-                <div className={`mt-2 ${isError ? 'bg-red-50 dark:bg-red-950/10' : 'bg-muted/50'} p-3 rounded`}>
-                  <pre className={`text-sm whitespace-pre-wrap break-words ${isError ? 'text-red-600 dark:text-red-400' : ''}`}>
-                    {result?.content}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+      <CardContent className="space-y-1 pt-0">
+        <CollapsibleSection
+          icon={MessageSquare}
+          expanded={areInputsExpanded}
+          onToggle={() => setAreInputsExpanded(!areInputsExpanded)}
+          previewContent={argsContent}
+          expandedContent={argsContent}
+        />
+        {status === "executing" && !hasResult && (
+          <div className="flex items-center gap-2 py-1">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">{agentDisplay} is responding...</span>
+          </div>
+        )}
+        {hasResult && resultContent && (
+          <CollapsibleSection
+            icon={MessageSquare}
+            expanded={areResultsExpanded}
+            onToggle={() => setAreResultsExpanded(!areResultsExpanded)}
+            previewContent={resultContent}
+            expandedContent={resultContent}
+            errorStyle={isError}
+          />
+        )}
 
         {showActivitySection && (
           <div className="mt-4 border-t pt-3">
