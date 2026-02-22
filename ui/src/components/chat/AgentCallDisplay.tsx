@@ -5,10 +5,7 @@ import { convertToUserFriendlyName } from "@/lib/utils";
 import { ChevronUp, ChevronDown, MessageSquare, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import KagentLogo from "../kagent-logo";
-import ReactMarkdown from "react-markdown";
-import gfm from "remark-gfm";
-import rehypeExternalLinks from "rehype-external-links";
-import CodeBlock from "./CodeBlock";
+import { SmartContent, parseContentString } from "./SmartContent";
 
 export type AgentCallStatus = "requested" | "executing" | "completed";
 
@@ -23,78 +20,6 @@ interface AgentCallDisplayProps {
 }
 
 const AGENT_TOOL_NAME_RE = /^(.+)__NS__(.+)$/;
-
-// ── Markdown components (mirrors TruncatableText pattern) ──────────────────
-const markdownComponents = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  code: (props: any) => {
-    const { children, className } = props;
-    if (className) {
-      return <CodeBlock className={className}>{[children]}</CodeBlock>;
-    }
-    return <code className={className}>{children}</code>;
-  },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  table: (props: any) => {
-    const { children } = props;
-    return <table className="min-w-full divide-y divide-gray-300 table-fixed">{children}</table>;
-  },
-};
-
-function isMarkdownRenderable(content: string): boolean {
-  const trimmed = content.trim();
-  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return true;
-  try {
-    const parsed: unknown = JSON.parse(trimmed);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      const keys = Object.keys(parsed as Record<string, unknown>);
-      if (keys.length === 1 && typeof (parsed as Record<string, unknown>)[keys[0]] === "string") return true;
-    }
-    return false;
-  } catch {
-    return true;
-  }
-}
-
-function extractMarkdownContent(content: string): string {
-  const trimmed = content.trim();
-  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return trimmed;
-  try {
-    const parsed: unknown = JSON.parse(trimmed);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      const keys = Object.keys(parsed as Record<string, unknown>);
-      if (keys.length === 1) {
-        const val = (parsed as Record<string, unknown>)[keys[0]];
-        if (typeof val === "string") return val;
-      }
-    }
-  } catch { /* not JSON */ }
-  return trimmed;
-}
-
-function isArgsMarkdownRenderable(args: Record<string, unknown>): boolean {
-  const keys = Object.keys(args);
-  return keys.length === 1 && typeof args[keys[0]] === "string";
-}
-
-function extractArgsMarkdownContent(args: Record<string, unknown>): string {
-  const keys = Object.keys(args);
-  return args[keys[0]] as string;
-}
-
-function MarkdownBlock({ content, className }: { content: string; className?: string }) {
-  return (
-    <div className={`prose-md prose max-w-none dark:prose-invert text-sm ${className ?? ""}`}>
-      <ReactMarkdown
-        components={markdownComponents}
-        remarkPlugins={[gfm]}
-        rehypePlugins={[[rehypeExternalLinks, { target: "_blank" }]]}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
-}
 
 function CollapsibleSection({
   icon: Icon,
@@ -207,41 +132,11 @@ const AgentCallDisplay = ({ call, result, status = "requested", isError = false 
     }
   };
 
-  // ── Input rendering ──────────────────────────────────────────────────
-  const argsIsMarkdown = isArgsMarkdownRenderable(call.args);
-  const argsMarkdown = argsIsMarkdown ? extractArgsMarkdownContent(call.args) : "";
-  const argsJson = JSON.stringify(call.args, null, 2);
-
-  const renderArgsContent = () => {
-    if (argsIsMarkdown) {
-      return <MarkdownBlock content={argsMarkdown} />;
-    }
-    return <pre className="text-sm whitespace-pre-wrap break-words">{argsJson}</pre>;
-  };
-
-  // ── Output rendering ────────────────────────────────────────────────
-  const resultContent = result?.content ?? "";
-  const resultIsMarkdown = resultContent ? isMarkdownRenderable(resultContent) : false;
-  const resultMarkdown = resultIsMarkdown ? extractMarkdownContent(resultContent) : "";
-
-  const renderResultContent = () => {
-    const errorClass = isError ? "text-red-600 dark:text-red-400" : "";
-    if (resultIsMarkdown) {
-      return <MarkdownBlock content={resultMarkdown} className={errorClass} />;
-    }
-
-    let formatted = resultContent;
-    try {
-      const parsed = JSON.parse(resultContent);
-      formatted = JSON.stringify(parsed, null, 2);
-    } catch { /* keep as-is */ }
-
-    return (
-      <pre className={`text-sm whitespace-pre-wrap break-words ${errorClass}`}>
-        {formatted}
-      </pre>
-    );
-  };
+  const parsedResult = hasResult && result?.content ? parseContentString(result.content) : null;
+  const argsContent = <SmartContent data={call.args} />;
+  const resultContent = parsedResult !== null
+    ? <SmartContent data={parsedResult} className={isError ? "text-red-600 dark:text-red-400" : ""} />
+    : null;
 
   return (
     <Card className={`w-full mx-auto my-1 min-w-full ${isError ? 'border-red-300' : ''}`}>
@@ -262,8 +157,8 @@ const AgentCallDisplay = ({ call, result, status = "requested", isError = false 
           icon={MessageSquare}
           expanded={areInputsExpanded}
           onToggle={() => setAreInputsExpanded(!areInputsExpanded)}
-          previewContent={renderArgsContent()}
-          expandedContent={renderArgsContent()}
+          previewContent={argsContent}
+          expandedContent={argsContent}
         />
         {status === "executing" && !hasResult && (
           <div className="flex items-center gap-2 py-1">
@@ -271,13 +166,13 @@ const AgentCallDisplay = ({ call, result, status = "requested", isError = false 
             <span className="text-sm">{agentDisplay} is responding...</span>
           </div>
         )}
-        {hasResult && result?.content && (
+        {hasResult && resultContent && (
           <CollapsibleSection
             icon={MessageSquare}
             expanded={areResultsExpanded}
             onToggle={() => setAreResultsExpanded(!areResultsExpanded)}
-            previewContent={renderResultContent()}
-            expandedContent={renderResultContent()}
+            previewContent={resultContent}
+            expandedContent={resultContent}
             errorStyle={isError}
           />
         )}

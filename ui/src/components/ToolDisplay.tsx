@@ -3,12 +3,9 @@ import { FunctionCall } from "@/types";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { FunctionSquare, CheckCircle, Clock, Code, ChevronUp, ChevronDown, Loader2, Text, Check, Copy, AlertCircle, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import ReactMarkdown from "react-markdown";
-import gfm from "remark-gfm";
-import rehypeExternalLinks from "rehype-external-links";
-import CodeBlock from "@/components/chat/CodeBlock";
+import { Textarea } from "@/components/ui/textarea";
+import { SmartContent, parseContentString } from "@/components/chat/SmartContent";
 
 export type ToolCallStatus = "requested" | "executing" | "completed" | "pending_approval" | "approved" | "rejected";
 
@@ -26,101 +23,6 @@ interface ToolDisplayProps {
   onReject?: (reason?: string) => void;
 }
 
-// ── Markdown components (mirrors TruncatableText pattern) ──────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const markdownComponents = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  code: (props: any) => {
-    const { children, className } = props;
-    if (className) {
-      return <CodeBlock className={className}>{[children]}</CodeBlock>;
-    }
-    return <code className={className}>{children}</code>;
-  },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  table: (props: any) => {
-    const { children } = props;
-    return <table className="min-w-full divide-y divide-gray-300 table-fixed">{children}</table>;
-  },
-};
-
-/**
- * Returns true when a string should be rendered as markdown rather than
- * formatted JSON in a `<pre>` block.
- *
- * - Plain text (not valid JSON) → true
- * - JSON object with exactly ONE key whose value is a string → true
- * - Everything else (arrays, multi-key objects, nested) → false
- */
-function isMarkdownRenderable(content: string): boolean {
-  const trimmed = content.trim();
-  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-    return true;
-  }
-  try {
-    const parsed: unknown = JSON.parse(trimmed);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      const keys = Object.keys(parsed as Record<string, unknown>);
-      if (keys.length === 1 && typeof (parsed as Record<string, unknown>)[keys[0]] === "string") {
-        return true;
-      }
-    }
-    return false;
-  } catch {
-    return true;
-  }
-}
-
-/**
- * Extracts the string to feed to ReactMarkdown.
- * - Plain text → as-is
- * - Single-field JSON object → the string value
- */
-function extractMarkdownContent(content: string): string {
-  const trimmed = content.trim();
-  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-    return trimmed;
-  }
-  try {
-    const parsed: unknown = JSON.parse(trimmed);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      const keys = Object.keys(parsed as Record<string, unknown>);
-      if (keys.length === 1) {
-        const val = (parsed as Record<string, unknown>)[keys[0]];
-        if (typeof val === "string") return val;
-      }
-    }
-  } catch {
-    // not JSON
-  }
-  return trimmed;
-}
-
-function isArgsMarkdownRenderable(args: Record<string, unknown>): boolean {
-  const keys = Object.keys(args);
-  return keys.length === 1 && typeof args[keys[0]] === "string";
-}
-
-function extractArgsMarkdownContent(args: Record<string, unknown>): string {
-  const keys = Object.keys(args);
-  return args[keys[0]] as string;
-}
-
-// ── Markdown renderer ──────────────────────────────────────────────────────
-function MarkdownBlock({ content, className }: { content: string; className?: string }) {
-  return (
-    <div className={`prose-md prose max-w-none dark:prose-invert text-sm ${className ?? ""}`}>
-      <ReactMarkdown
-        components={markdownComponents}
-        remarkPlugins={[gfm]}
-        rehypePlugins={[[rehypeExternalLinks, { target: "_blank" }]]}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
-}
-
 function CollapsibleSection({
   icon: Icon,
   expanded,
@@ -128,7 +30,6 @@ function CollapsibleSection({
   previewContent,
   expandedContent,
   errorStyle,
-  actions,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   expanded: boolean;
@@ -136,7 +37,6 @@ function CollapsibleSection({
   previewContent: React.ReactNode;
   expandedContent: React.ReactNode;
   errorStyle?: boolean;
-  actions?: React.ReactNode;
 }) {
   if (!expanded) {
     return (
@@ -169,7 +69,6 @@ function CollapsibleSection({
             <ScrollArea className="max-h-96 overflow-y-auto p-2 w-full rounded-md bg-muted/50">
               {expandedContent}
             </ScrollArea>
-            {actions && <div className="absolute top-1 right-1">{actions}</div>}
           </div>
         </div>
       </div>
@@ -194,16 +93,7 @@ const ToolDisplay = ({ call, result, status = "requested", isError = false, isDe
   const [rejectionReason, setRejectionReason] = useState("");
 
   const hasResult = result !== undefined;
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(result?.content || "");
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy text:", err);
-    }
-  };
+  const parsedResult = hasResult ? parseContentString(result.content) : null;
 
   const handleApprove = async () => {
     if (!onApprove) {
@@ -301,53 +191,20 @@ const ToolDisplay = ({ call, result, status = "requested", isError = false, isDe
     }
   };
 
-  const borderClass = status === "pending_approval"
-    ? 'border-amber-300 dark:border-amber-700'
-    : status === "rejected"
-      ? 'border-red-300 dark:border-red-700'
-      : status === "approved"
-        ? 'border-green-300 dark:border-green-700'
-        : isError
-          ? 'border-red-300'
-          : '';
+    const borderClass = status === "pending_approval"
+        ? 'border-amber-300 dark:border-amber-700'
+        : status === "rejected"
+            ? 'border-red-300 dark:border-red-700'
+            : status === "approved"
+                ? 'border-green-300 dark:border-green-700'
+                : isError
+                    ? 'border-red-300'
+                    : '';
 
-  // ── Arguments rendering ────────────────────────────────────────────────
-  const argsIsMarkdown = isArgsMarkdownRenderable(call.args);
-  const argsMarkdown = argsIsMarkdown ? extractArgsMarkdownContent(call.args) : "";
-  const argsJson = JSON.stringify(call.args, null, 2);
-
-  const renderArgsContent = () => {
-    if (argsIsMarkdown) {
-      return <MarkdownBlock content={argsMarkdown} />;
-    }
-    return <pre className="text-sm whitespace-pre-wrap break-words">{argsJson}</pre>;
-  };
-
-  // ── Results rendering ──────────────────────────────────────────────────
-  const resultContent = result?.content ?? "";
-  const resultIsMarkdown = resultContent ? isMarkdownRenderable(resultContent) : false;
-  const resultMarkdown = resultIsMarkdown ? extractMarkdownContent(resultContent) : "";
-
-  const renderResultContent = () => {
-    const errorClass = isError ? "text-red-600 dark:text-red-400" : "";
-    if (resultIsMarkdown) {
-      return <MarkdownBlock content={resultMarkdown} className={errorClass} />;
-    }
-
-    let formatted = resultContent;
-    try {
-      const parsed = JSON.parse(resultContent);
-      formatted = JSON.stringify(parsed, null, 2);
-    } catch {
-      // keep as-is
-    }
-
-    return (
-      <pre className={`text-sm whitespace-pre-wrap break-words ${errorClass}`}>
-        {formatted}
-      </pre>
-    );
-  };
+  const argsContent = <SmartContent data={call.args} />;
+  const resultContent = parsedResult !== null
+    ? <SmartContent data={parsedResult} className={isError ? "text-red-600 dark:text-red-400" : ""} />
+    : null;
 
   return (
     <Card className={`w-full mx-auto my-1 min-w-full ${borderClass}`}>
@@ -369,8 +226,8 @@ const ToolDisplay = ({ call, result, status = "requested", isError = false, isDe
           icon={Code}
           expanded={areArgumentsExpanded}
           onToggle={() => setAreArgumentsExpanded(!areArgumentsExpanded)}
-          previewContent={renderArgsContent()}
-          expandedContent={renderArgsContent()}
+          previewContent={argsContent}
+          expandedContent={argsContent}
         />
           </div>
 
@@ -441,19 +298,14 @@ const ToolDisplay = ({ call, result, status = "requested", isError = false, isDe
             <span className="text-sm">Executing...</span>
           </div>
         )}
-        {hasResult && (
+        {hasResult && resultContent && (
           <CollapsibleSection
             icon={Text}
             expanded={areResultsExpanded}
             onToggle={() => setAreResultsExpanded(!areResultsExpanded)}
-            previewContent={renderResultContent()}
-            expandedContent={renderResultContent()}
+            previewContent={resultContent}
+            expandedContent={resultContent}
             errorStyle={isError}
-            actions={
-              <Button variant="ghost" size="sm" className="p-2" onClick={handleCopy}>
-                {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              </Button>
-            }
           />
         )}
       </CardContent>

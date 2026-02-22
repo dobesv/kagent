@@ -52,15 +52,13 @@ const ChatItem = ({ sessionId, agentName, agentNamespace, onDelete, sessionName,
     <>
       <SidebarMenu>
         <SidebarMenuItem key={sessionId}>
-          <SidebarMenuButton asChild className="overflow-hidden relative group/chatitem">
-            <Link href={`/agents/${agentNamespace}/${agentName}/chat/${sessionId}`} className="flex flex-col w-full">
-              <div className="flex items-center w-full relative">
-                <span className="text-sm whitespace-nowrap" title={title}>{title}</span>
-                <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-muted-foreground whitespace-nowrap pl-6"
-                  style={{
-                    background: 'linear-gradient(to right, transparent, hsl(var(--sidebar-background)) 30%)',
-                  }}
-                >{formatTime(createdAt)}</span>
+           <SidebarMenuButton asChild className="overflow-hidden group/chatitem">
+            <Link href={`/agents/${agentNamespace}/${agentName}/chat/${sessionId}`} className="flex flex-col w-full min-w-0">
+              <div className="flex items-center w-full min-w-0 gap-2">
+                <span className="text-sm truncate flex-1 min-w-0" title={title}>{title}</span>
+                {createdAt && (
+                  <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">{formatTime(createdAt)}</span>
+                )}
               </div>
               {showAgentName && agentName && (
                 <span className="text-xs text-muted-foreground truncate">{agentName}</span>
