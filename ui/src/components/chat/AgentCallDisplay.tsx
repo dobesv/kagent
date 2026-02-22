@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { FunctionCall } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { convertToUserFriendlyName } from "@/lib/utils";
-import { ChevronRight, ChevronDown, MessageSquare, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { ChevronUp, ChevronDown, MessageSquare, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import KagentLogo from "../kagent-logo";
 import ReactMarkdown from "react-markdown";
@@ -111,36 +111,48 @@ function CollapsibleSection({
   expandedContent: React.ReactNode;
   errorStyle?: boolean;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="flex items-start gap-1.5 w-full text-left cursor-pointer rounded-md hover:bg-muted/40 transition-colors"
-    >
-      <div className="flex items-center gap-1 pt-0.5 shrink-0 text-muted-foreground">
-        {expanded ? (
-          <ChevronDown className="w-3.5 h-3.5" />
-        ) : (
-          <ChevronRight className="w-3.5 h-3.5" />
-        )}
-        <Icon className="w-3.5 h-3.5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        {!expanded && (
-          <div className="relative max-h-20 overflow-hidden">
-            {previewContent}
-            <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        className="block w-full text-left cursor-pointer rounded-md hover:bg-muted/40 transition-colors"
+      >
+        <div className="flex items-start gap-1.5">
+          <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <div className="relative max-h-20 overflow-hidden">
+              {previewContent}
+            </div>
           </div>
-        )}
-        {expanded && (
+        </div>
+        <div className="flex justify-center pt-0.5 text-muted-foreground">
+          <ChevronDown className="w-3.5 h-3.5" />
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-md">
+      <div className="flex items-start gap-1.5">
+        <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+        <div className="flex-1 min-w-0">
           <div className={`relative rounded-md ${errorStyle ? "bg-red-50 dark:bg-red-950/10" : ""}`}>
             <ScrollArea className="max-h-96 overflow-y-auto p-2 w-full rounded-md bg-muted/50">
               {expandedContent}
             </ScrollArea>
           </div>
-        )}
+        </div>
       </div>
-    </button>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex justify-center w-full pt-0.5 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+      >
+        <ChevronUp className="w-3.5 h-3.5" />
+      </button>
+    </div>
   );
 }
 
