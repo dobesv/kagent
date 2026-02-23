@@ -52,7 +52,7 @@ const ChatItem = ({ sessionId, agentName, agentNamespace, onDelete, sessionName,
     <>
       <SidebarMenu>
         <SidebarMenuItem key={sessionId}>
-           <SidebarMenuButton asChild className="overflow-hidden group/chatitem">
+           <SidebarMenuButton asChild className={`overflow-hidden group/chatitem ${showAgentName ? "h-auto" : ""}`}>
             <Link href={`/agents/${agentNamespace}/${agentName}/chat/${sessionId}`} className="flex flex-col w-full min-w-0">
               <div className="flex items-center w-full min-w-0 gap-2">
                 <span className="text-sm truncate flex-1 min-w-0" title={title}>{title}</span>
