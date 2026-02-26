@@ -1,10 +1,11 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from kagent.adk._agent_executor import (
-    _is_context_window_error,
-    A2aAgentExecutor,
     _DEFAULT_EVENT_RETENTION_SIZE,
+    A2aAgentExecutor,
+    _is_context_window_error,
 )
 
 
