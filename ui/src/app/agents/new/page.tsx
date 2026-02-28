@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Brain, Loader2, Settings2, PlusCircle, Trash2, Layers } from "lucide-react";
-import { ModelConfig, AgentType, ContextConfig } from "@/types";
+import { ModelConfig, AgentType, ContextConfig, ResumabilityConfig } from "@/types";
 import { SystemPromptSection } from "@/components/create/SystemPromptSection";
 import { ModelSelectionSection } from "@/components/create/ModelSelectionSection";
 import { ToolsSection } from "@/components/create/ToolsSection";
@@ -23,6 +23,7 @@ import { NamespaceCombobox } from "@/components/NamespaceCombobox";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ResumabilitySection } from "@/components/create/ResumabilitySection";
 
 interface ValidationErrors {
   name?: string;
@@ -84,6 +85,7 @@ function AgentPageContent({ isEditMode, agentName, agentNamespace }: AgentPageCo
     envPairs: { name: string; value?: string; isSecret?: boolean; secretName?: string; secretKey?: string; optional?: boolean }[];
     stream: boolean;
     contextConfig: ContextConfig | undefined;
+    resumabilityConfig: ResumabilityConfig | undefined;
     isSubmitting: boolean;
     isLoading: boolean;
     errors: ValidationErrors;
@@ -109,6 +111,7 @@ function AgentPageContent({ isEditMode, agentName, agentNamespace }: AgentPageCo
     envPairs: [{ name: "", value: "", isSecret: false }],
     stream: false,
     contextConfig: undefined,
+    resumabilityConfig: undefined,
     isSubmitting: false,
     isLoading: isEditMode,
     errors: {},
@@ -232,7 +235,7 @@ function AgentPageContent({ isEditMode, agentName, agentNamespace }: AgentPageCo
     if (state.agentType === "Declarative" && state.skillRefs && state.skillRefs.length > 0) {
       // Filter out empty/whitespace entries first - if all are empty, treat as "no skills"
       const nonEmptyRefs = state.skillRefs.filter(ref => ref.trim());
-      
+
       // Only validate if there are actual skill references
       if (nonEmptyRefs.length > 0) {
         // Check for invalid image formats
@@ -727,6 +730,23 @@ function AgentPageContent({ isEditMode, agentName, agentNamespace }: AgentPageCo
                     />
                   </CardContent>
                 </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Layers className="h-5 w-5 text-violet-500" />
+                      Resumability
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResumabilitySection
+                        config={state.resumabilityConfig}
+                        onChange={(config) => setState(prev => ({ ...prev, resumabilityConfig: config }))}
+                        disabled={state.isSubmitting || state.isLoading}
+                    />
+                  </CardContent>
+                </Card>
+
 
                 <Card>
                   <CardHeader>

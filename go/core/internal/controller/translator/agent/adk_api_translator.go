@@ -679,6 +679,13 @@ func (a *adkApiTranslator) translateInlineAgent(ctx context.Context, agent *v1al
 		cfg.ContextConfig = contextCfg
 	}
 
+	// Translate resumability configuration
+	if agent.Spec.Declarative.Resumability != nil {
+		cfg.ResumabilityConfig = &adk.AgentResumabilityConfig{
+			IsResumable: agent.Spec.Declarative.Resumability.IsResumable,
+		}
+	}
+
 	// Handle Memory Configuration: presence of Memory field enables it.
 	if agent.Spec.Declarative.Memory != nil {
 		embCfg, embMdd, embHash, err := a.translateEmbeddingConfig(ctx, agent.Namespace, agent.Spec.Declarative.Memory.ModelConfig)

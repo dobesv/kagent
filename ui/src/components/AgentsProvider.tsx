@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { getAgent as getAgentAction, createAgent, getAgents } from "@/app/actions/agents";
 import { getTools } from "@/app/actions/tools";
-import type { Agent, Tool, AgentResponse, BaseResponse, ModelConfig, ToolsResponse, AgentType, EnvVar, ContextConfig } from "@/types";
+import type { Agent, Tool, AgentResponse, BaseResponse, ModelConfig, ToolsResponse, AgentType, EnvVar, ContextConfig, ResumabilityConfig } from "@/types";
 import { getModelConfigs } from "@/app/actions/modelConfigs";
 import { isResourceNameValid } from "@/lib/utils";
 
@@ -202,7 +202,7 @@ export function AgentsProvider({ children }: AgentsProviderProps) {
       }
 
       const agent = agentResult.data;
-      
+
       if (!agent) {
         console.warn(`Agent with name ${name} and namespace ${namespace} not found`);
         return null;

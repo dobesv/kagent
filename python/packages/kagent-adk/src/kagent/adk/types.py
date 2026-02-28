@@ -261,6 +261,12 @@ class MemoryConfig(BaseModel):
     embedding: EmbeddingConfig | None = None  # Embedding model config for memory tools.
 
 
+class ResumabilitySettings(BaseModel):
+    """Settings for agent resumability."""
+
+    is_resumable: bool
+
+
 class AgentConfig(BaseModel):
     model: ModelUnion = Field(discriminator="type")
     description: str
@@ -272,6 +278,7 @@ class AgentConfig(BaseModel):
     stream: bool | None = None  # Refers to LLM response streaming, not A2A streaming
     memory: MemoryConfig | None = None  # Memory configuration
     context_config: ContextConfig | None = None
+    resumability_config: ResumabilitySettings | None = None
 
     def to_agent(self, name: str, sts_integration: Optional[ADKTokenPropagationPlugin] = None) -> Agent:
         if name is None or not str(name).strip():

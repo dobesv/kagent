@@ -254,6 +254,7 @@ export interface DeclarativeAgentSpec {
   stream?: boolean;
   a2aConfig?: A2AConfig;
   context?: ContextConfig;
+  resumability?: ResumabilityConfig;
 }
 
 export interface ContextConfig {
@@ -261,6 +262,9 @@ export interface ContextConfig {
   cache?: ContextCacheConfig;
 }
 
+export interface ResumabilityConfig {
+  isResumable: boolean;
+}
 
 export interface ContextCompressionConfig {
   compactionInterval?: number;

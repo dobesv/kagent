@@ -408,6 +408,11 @@ type AgentCompressionConfig struct {
 	EventRetentionSize *int   `json:"event_retention_size,omitempty"`
 }
 
+// AgentResumabilityConfig maps to Python's ResumabilityConfig.
+type AgentResumabilityConfig struct {
+	IsResumable bool `json:"is_resumable"`
+}
+
 func (c *AgentCompressionConfig) UnmarshalJSON(data []byte) error {
 	var tmp struct {
 		CompactionInterval *int            `json:"compaction_interval,omitempty"`
@@ -437,16 +442,17 @@ func (c *AgentCompressionConfig) UnmarshalJSON(data []byte) error {
 
 // See `python/packages/kagent-adk/src/kagent/adk/types.py` for the python version of this
 type AgentConfig struct {
-	Model         Model                 `json:"model"`
-	Description   string                `json:"description"`
-	Instruction   string                `json:"instruction"`
-	HttpTools     []HttpMcpServerConfig `json:"http_tools,omitempty"`
-	SseTools      []SseMcpServerConfig  `json:"sse_tools,omitempty"`
-	RemoteAgents  []RemoteAgentConfig   `json:"remote_agents,omitempty"`
-	ExecuteCode   *bool                 `json:"execute_code,omitempty"`
-	Stream        *bool                 `json:"stream,omitempty"`
-	Memory        *MemoryConfig         `json:"memory,omitempty"`
-	ContextConfig *AgentContextConfig   `json:"context_config,omitempty"`
+	Model              Model                    `json:"model"`
+	Description        string                   `json:"description"`
+	Instruction        string                   `json:"instruction"`
+	HttpTools          []HttpMcpServerConfig    `json:"http_tools,omitempty"`
+	SseTools           []SseMcpServerConfig     `json:"sse_tools,omitempty"`
+	RemoteAgents       []RemoteAgentConfig      `json:"remote_agents,omitempty"`
+	ExecuteCode        *bool                     `json:"execute_code,omitempty"`
+	Stream             *bool                     `json:"stream,omitempty"`
+	Memory             *MemoryConfig            `json:"memory,omitempty"`
+	ContextConfig      *AgentContextConfig      `json:"context_config,omitempty"`
+	ResumabilityConfig *AgentResumabilityConfig `json:"resumability_config,omitempty"`
 }
 
 // GetStream returns the stream value or default if not set
@@ -467,16 +473,17 @@ func (a *AgentConfig) GetExecuteCode() bool {
 
 func (a *AgentConfig) UnmarshalJSON(data []byte) error {
 	var tmp struct {
-		Model         json.RawMessage       `json:"model"`
-		Description   string                `json:"description"`
-		Instruction   string                `json:"instruction"`
-		HttpTools     []HttpMcpServerConfig `json:"http_tools,omitempty"`
-		SseTools      []SseMcpServerConfig  `json:"sse_tools,omitempty"`
-		RemoteAgents  []RemoteAgentConfig   `json:"remote_agents,omitempty"`
-		ExecuteCode   *bool                 `json:"execute_code,omitempty"`
-		Stream        *bool                 `json:"stream,omitempty"`
-		Memory        json.RawMessage       `json:"memory"`
-		ContextConfig *AgentContextConfig   `json:"context_config,omitempty"`
+		Model              json.RawMessage          `json:"model"`
+		Description        string                   `json:"description"`
+		Instruction        string                   `json:"instruction"`
+		HttpTools          []HttpMcpServerConfig    `json:"http_tools,omitempty"`
+		SseTools           []SseMcpServerConfig     `json:"sse_tools,omitempty"`
+		RemoteAgents       []RemoteAgentConfig      `json:"remote_agents,omitempty"`
+		ExecuteCode        *bool                     `json:"execute_code,omitempty"`
+		Stream             *bool                     `json:"stream,omitempty"`
+		Memory             json.RawMessage          `json:"memory"`
+		ContextConfig      *AgentContextConfig      `json:"context_config,omitempty"`
+		ResumabilityConfig *AgentResumabilityConfig `json:"resumability_config,omitempty"`
 	}
 	if err := json.Unmarshal(data, &tmp); err != nil {
 		return err
@@ -505,6 +512,7 @@ func (a *AgentConfig) UnmarshalJSON(data []byte) error {
 	a.Stream = tmp.Stream
 	a.Memory = memory
 	a.ContextConfig = tmp.ContextConfig
+	a.ResumabilityConfig = tmp.ResumabilityConfig
 	return nil
 }
 

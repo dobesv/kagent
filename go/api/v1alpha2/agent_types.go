@@ -188,6 +188,10 @@ type DeclarativeAgentSpec struct {
 	// This includes event compaction (compression) and context caching.
 	// +optional
 	Context *ContextConfig `json:"context,omitempty"`
+
+	// Resumability configures the resumability for the agent.
+	// +optional
+	Resumability *ResumabilityConfig `json:"resumability,omitempty"`
 }
 
 // ContextConfig configures context management for an agent.
@@ -285,6 +289,13 @@ type DeclarativeDeploymentSpec struct {
 	ImageRegistry string `json:"imageRegistry,omitempty"`
 
 	SharedDeploymentSpec `json:",inline"`
+}
+
+// ResumabilityConfig configures the resumability for the agent.
+type ResumabilityConfig struct {
+	// IsResumable enables agent resumability.
+	// +optional
+	IsResumable bool `json:"isResumable,omitempty"`
 }
 
 // ContextCacheConfig configures prefix context caching at the LLM provider level.

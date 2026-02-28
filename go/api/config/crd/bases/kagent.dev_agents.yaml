@@ -10006,6 +10006,14 @@ spec:
                         maxItems: 20
                         type: array
                     type: object
+                  resumability:
+                    description: Resumability configures the resumability for the
+                      agent.
+                    properties:
+                      isResumable:
+                        description: IsResumable enables agent resumability.
+                        type: boolean
+                    type: object
                   runtime:
                     allOf:
                     - enum:
