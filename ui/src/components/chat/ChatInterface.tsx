@@ -175,7 +175,7 @@ export default function ChatInterface({ selectedAgentName, selectedNamespace, se
     } finally {
       abortControllerRef.current = null;
     }
-  }, [selectedNamespace, selectedAgentName, sessionId]);
+  }, [selectedNamespace, selectedAgentName, sessionId, consumeEventStream]);
 
   useEffect(() => {
     async function initializeChat() {
