@@ -7,7 +7,7 @@ export const handlers = [
       message: 'Sub-agent session fetched successfully',
       data: {
         session: {
-          id: `sub-session-${toolCallId}`,
+          id: `${sessionId}-sub-session-${toolCallId}`,
           agent_id: 'default/sub-agent',
           name: 'Sub-agent session name',
           user_id: 'admin@kagent.dev',
