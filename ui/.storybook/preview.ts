@@ -1,5 +1,12 @@
 import type { Preview } from '@storybook/nextjs-vite'
 import '../src/app/globals.css'
+import { initialize, mswLoader } from 'msw-storybook-addon'
+import { handlers } from './msw-handlers'
+
+// Initialize MSW
+initialize({
+  onUnhandledRequest: 'bypass',
+})
 
 const preview: Preview = {
   parameters: {
@@ -11,7 +18,10 @@ const preview: Preview = {
     },
     a11y: {
       test: 'todo'
-    }
+    },
+    msw: {
+      handlers,
+    },
   },
   decorators: [
     (Story) => {
@@ -19,6 +29,7 @@ const preview: Preview = {
       return Story();
     },
   ],
+  loaders: [mswLoader],
 };
 
 export default preview;
