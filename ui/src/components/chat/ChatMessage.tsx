@@ -21,9 +21,10 @@ interface ChatMessageProps {
   onReject?: (toolCallId: string, reason?: string) => void;
   onAskUserSubmit?: (answers: Array<{ answer: string[] }>) => void;
   pendingDecisions?: Record<string, "approve" | "deny">;
+  sessionId?: string;
 }
 
-export default function ChatMessage({ message, allMessages, agentContext, onApprove, onReject, onAskUserSubmit, pendingDecisions }: ChatMessageProps) {
+export default function ChatMessage({ message, allMessages, agentContext, onApprove, onReject, onAskUserSubmit, pendingDecisions, sessionId }: ChatMessageProps) {
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [isPositiveFeedback, setIsPositiveFeedback] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -121,6 +122,7 @@ export default function ChatMessage({ message, allMessages, agentContext, onAppr
       onApprove={onApprove}
       onReject={onReject}
       pendingDecisions={pendingDecisions}
+      sessionId={sessionId}
     />;
   }
 
@@ -136,7 +138,7 @@ export default function ChatMessage({ message, allMessages, agentContext, onAppr
     });
 
     if (hasToolCalls) {
-      return <ToolCallDisplay currentMessage={message} allMessages={allMessages} />;
+      return <ToolCallDisplay currentMessage={message} allMessages={allMessages} sessionId={sessionId} />;
     }
     return null;
   }

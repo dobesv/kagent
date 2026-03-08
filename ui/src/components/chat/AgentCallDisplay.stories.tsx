@@ -26,6 +26,7 @@ export const Delegating: Story = {
   args: {
     call: baseCall,
     status: "requested",
+    sessionId: 'sess-123',
   },
 };
 
@@ -33,6 +34,7 @@ export const AwaitingResponse: Story = {
   args: {
     call: baseCall,
     status: "executing",
+    sessionId: 'sess-123',
   },
 };
 
@@ -44,6 +46,7 @@ export const Completed: Story = {
       content: '{"summary": "Sales increased by 15% in Q4", "details": "Strong performance across all regions"}',
       is_error: false,
     },
+    sessionId: 'sess-123',
   },
 };
 
@@ -56,6 +59,7 @@ export const CompletedWithError: Story = {
       content: "Failed to connect to data source: Connection timeout after 30s",
       is_error: true,
     },
+    sessionId: 'sess-123',
   },
 };
 
@@ -70,6 +74,7 @@ export const LongAgentName: Story = {
       content: "Processing complete",
       is_error: false,
     },
+    sessionId: 'sess-123',
   },
 };
 
@@ -81,5 +86,6 @@ export const WithTimestamp: Story = {
       content: "Task completed successfully",
       is_error: false,
     },
+    sessionId: 'sess-123',
   },
 };

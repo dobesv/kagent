@@ -219,9 +219,14 @@ def _register_litellm_metrics_callback():
     # Providers where LiteLLM uses the Python SDK directly, so the
     # SDK instrumentor already captures metrics. Skip these to avoid
     # double-counting.
-    SDK_INSTRUMENTED_PROVIDERS = frozenset({
-        "openai", "azure", "azure_text", "azure_ai",
-    })
+    SDK_INSTRUMENTED_PROVIDERS = frozenset(
+        {
+            "openai",
+            "azure",
+            "azure_text",
+            "azure_ai",
+        }
+    )
 
     class _MetricsCallback(CustomLogger):
         def _record_metrics(self, kwargs, response_obj, start_time, end_time):
@@ -279,4 +284,3 @@ def _register_litellm_metrics_callback():
 
     litellm.callbacks.append(_MetricsCallback())
     logging.info("Registered LiteLLM metrics callback for non-SDK providers")
-
