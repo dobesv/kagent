@@ -272,7 +272,49 @@ export default function ChatInterface({ selectedAgentName, selectedNamespace, se
     }
   }, [storedMessages, streamingMessages, streamingContent]);
 
+  /**
+   * Shared streaming helper used by both handleSendMessage and
+   * sendApprovalDecision.  Handles the abort controller, timeout, event loop,
+   * and base cleanup.
+   */
+  const streamA2AMessage = async (
+    a2aMessage: Message,
+    opts?: {
+      errorLabel?: string;
+      onError?: () => void;
+      onFinally?: () => void;
+    },
+  ) => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    isFirstAssistantChunkRef.current = true;
 
+    try {
+      const sendParams = { message: a2aMessage, metadata: {} };
+      const stream = await kagentA2AClient.sendMessageStream(
+        selectedNamespace,
+        selectedAgentName,
+        sendParams,
+        controller.signal
+      );
+
+      await consumeEventStream(stream, controller);
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === "AbortError") {
+        setChatStatus("ready");
+      } else {
+        toast.error(`${opts?.errorLabel || "Request failed"}: ${error instanceof Error ? error.message : "Unknown error"}`);
+        setChatStatus("error");
+        opts?.onError?.();
+      }
+
+      setIsStreaming(false);
+      setStreamingContent("");
+    } finally {
+      abortControllerRef.current = null;
+      opts?.onFinally?.();
+    }
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -368,7 +410,6 @@ export default function ChatInterface({ selectedAgentName, selectedNamespace, se
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      try {
       const messageId = uuidv4();
       const a2aMessage = createMessage(userMessageText, "user", {
         messageId,
@@ -384,49 +425,6 @@ export default function ChatInterface({ selectedAgentName, selectedNamespace, se
       toast.error("Error sending message or creating session");
       setChatStatus("error");
       setCurrentInputMessage(userMessageText);
-    }
-  };
-
-  /**
-   * Shared streaming helper used by both handleSendMessage and
-   * sendApprovalDecision.  Handles the abort controller, timeout, event loop,
-   * and base cleanup.
-   */
-  const streamA2AMessage = async (
-    a2aMessage: Message,
-    opts?: {
-      errorLabel?: string;
-      onError?: () => void;
-      onFinally?: () => void;
-    },
-  ) => {
-    abortControllerRef.current = new AbortController();
-    isFirstAssistantChunkRef.current = true;
-
-    try {
-      const sendParams = { message: a2aMessage, metadata: {} };
-      const stream = await kagentA2AClient.sendMessageStream(
-        selectedNamespace,
-        selectedAgentName,
-        sendParams,
-          controller.signal
-      );
-
-        await consumeEventStream(stream, controller);
-    } catch (error: unknown) {
-      if (error instanceof Error && error.name === "AbortError") {
-        setChatStatus("ready");
-      } else {
-        toast.error(`${opts?.errorLabel || "Request failed"}: ${error instanceof Error ? error.message : "Unknown error"}`);
-        setChatStatus("error");
-        opts?.onError?.();
-      }
-
-      setIsStreaming(false);
-      setStreamingContent("");
-    } finally {
-      abortControllerRef.current = null;
-      opts?.onFinally?.();
     }
   };
 

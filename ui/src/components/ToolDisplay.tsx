@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FunctionCall } from "@/types";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
-import { FunctionSquare, CheckCircle, Clock, Code, ChevronUp, ChevronDown, Loader2, Text, Check, Copy, AlertCircle, ShieldAlert } from "lucide-react";
+import { FunctionSquare, CheckCircle, Clock, Code, ChevronUp, ChevronDown, Loader2, Text, AlertCircle, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -87,7 +87,6 @@ function CollapsibleSection({
 const ToolDisplay = ({ call, result, status = "requested", isError = false, isDecided = false, onApprove, onReject }: ToolDisplayProps) => {
   const [areArgumentsExpanded, setAreArgumentsExpanded] = useState(status === "pending_approval");
   const [areResultsExpanded, setAreResultsExpanded] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -298,6 +297,7 @@ const ToolDisplay = ({ call, result, status = "requested", isError = false, isDe
             <span className="text-sm">Executing...</span>
           </div>
         )}
+      </div>
         {hasResult && resultContent && (
           <CollapsibleSection
             icon={Text}
