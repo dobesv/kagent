@@ -9978,6 +9978,27 @@ spec:
                         maxItems: 20
                         type: array
                     type: object
+                  retryPolicy:
+                    description: |-
+                      RetryPolicy configures retry behavior for failed agent request executions.
+                      When set, failed requests are retried with exponential backoff.
+                    properties:
+                      initialRetryDelay:
+                        default: 1s
+                        description: Initial delay between retries. Uses Go duration
+                          format (e.g., "1s", "500ms").
+                        type: string
+                      maxRetries:
+                        default: 0
+                        description: Maximum number of retry attempts. 0 means no
+                          retries.
+                        minimum: 0
+                        type: integer
+                      maxRetryDelay:
+                        description: Maximum delay between retries (caps exponential
+                          growth). Optional.
+                        type: string
+                    type: object
                   runtime:
                     allOf:
                     - enum:
