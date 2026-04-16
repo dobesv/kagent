@@ -438,6 +438,11 @@ type RetryPolicyConfig struct {
 	MaxRetryDelay     *float64 `json:"max_retry_delay_seconds,omitempty"`
 }
 
+// AskUserConfig configures the "ask user" tool.
+type AskUserConfig struct {
+	Enabled bool `json:"enabled"`
+}
+
 // See `python/packages/kagent-adk/src/kagent/adk/types.py` for the python version of this
 type AgentConfig struct {
 	Model         Model                 `json:"model"`
@@ -452,6 +457,7 @@ type AgentConfig struct {
 	Network       *NetworkConfig        `json:"network,omitempty"`
 	ContextConfig *AgentContextConfig   `json:"context_config,omitempty"`
 	RetryPolicy   *RetryPolicyConfig    `json:"retry_policy,omitempty"`
+	AskUser       *AskUserConfig        `json:"ask_user,omitempty"`
 }
 
 // GetStream returns the stream value or default if not set
@@ -484,6 +490,7 @@ func (a *AgentConfig) UnmarshalJSON(data []byte) error {
 		Network       *NetworkConfig        `json:"network,omitempty"`
 		ContextConfig *AgentContextConfig   `json:"context_config,omitempty"`
 		RetryPolicy   *RetryPolicyConfig    `json:"retry_policy,omitempty"`
+		AskUser       *AskUserConfig        `json:"ask_user,omitempty"`
 	}
 	if err := json.Unmarshal(data, &tmp); err != nil {
 		return err
@@ -514,6 +521,7 @@ func (a *AgentConfig) UnmarshalJSON(data []byte) error {
 	a.Network = tmp.Network
 	a.ContextConfig = tmp.ContextConfig
 	a.RetryPolicy = tmp.RetryPolicy
+	a.AskUser = tmp.AskUser
 	return nil
 }
 

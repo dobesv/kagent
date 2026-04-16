@@ -256,12 +256,20 @@ class MemoryConfig(BaseModel):
 
 class NetworkConfig(BaseModel):
     allowed_domains: list[str] = Field(default_factory=list)
+
+
 class RetryPolicyConfig(BaseModel):
     """Retry policy configuration for agent request executions."""
 
     max_retries: int = 0
     initial_retry_delay_seconds: float = 1.0
     max_retry_delay_seconds: float | None = None
+
+
+class AskUserConfig(BaseModel):
+    """Ask user tool configuration."""
+
+    enabled: bool
 
 
 class AgentConfig(BaseModel):
@@ -277,6 +285,7 @@ class AgentConfig(BaseModel):
     network: NetworkConfig | None = None
     context_config: ContextConfig | None = None
     retry_policy: RetryPolicyConfig | None = None  # Retry policy configuration
+    ask_user: AskUserConfig | None = None
 
     def to_agent(self, name: str, sts_integration: Optional[ADKTokenPropagationPlugin] = None) -> Agent:
         if name is None or not str(name).strip():
@@ -392,8 +401,8 @@ class AgentConfig(BaseModel):
         code_executor = SandboxedLocalCodeExecutor() if self.execute_code else None
         model = _create_llm_from_model_config(self.model)
 
-        # Add built-in ask_user tool unconditionally — every agent can ask the user questions.
-        tools.append(AskUserTool())
+        if self.ask_user and self.ask_user.enabled:
+            tools.append(AskUserTool())
 
         # Build before_tool_callback if any tools require approval
         before_tool_callback = make_approval_callback(tools_requiring_approval) if tools_requiring_approval else None
